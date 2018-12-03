@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<title>EventApp Config</title>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="format-detection" content="telephone=no" />
+<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+<script type="text/javascript" src="jquery-3.3.1.min.js"></script>
+<script type="text/javascript">
+document.write('<script type="text/javascript" src="../_cv_js/cordova.js"></'+'script>');
+document.write('<script type="text/javascript" src="_cv_lib.js?'+Math.random()+'"></'+'script>');
+</script>
+<script type="text/javascript">
+_cv_config=[]; if (!_cv_lib_val) { _cv_lib_val=[]; }
+document.addEventListener("deviceready",onDeviceReady,false);
+document.addEventListener('DOMContentLoaded',DOMContentLoaded,false);
+function onDeviceReady() { _cv_lib_val.onDeviceReady=true; loading_stage_01(); }
+function DOMContentLoaded() { _cv_lib_val.DOMContentLoaded=true; loading_stage_01(); }
+function loading_stage_01() { if (_cv_lib_val.DOMContentLoaded && _cv_lib_val.onDeviceReady) { loading_stage_02(); } }
+function loading_stage_02()
+ { get_switch_settings();
+   read_config(); _cv_lib_val.page=1;
+   $(document).on("_cv_debug_switch_changed",function(rtn) { get_switch_settings(); });
+ }
+function get_switch_settings()
+ { _cv_get_reset_switch(function(rtn){ $('#app_reset').prop('checked',rtn); });
+   _cv_get_debug_switch(function(rtn){ $('#app_debug').prop('checked',rtn); });
+ }
+
+function debug_logout()
+ { navigator.notification.confirm(' ',function(e)
+    { if (e==2) { cordova.exec(function(){},function(){},"CustomAPI","debugLogOut",[]); }
+    },'Confirm Logout',['Cancel','Logout'],false);
+ }
+function debug_close(url)
+ { if (typeof(url)=='undefined') { cordova.exec(function(){},function(){},"CustomAPI","debugClose",[]); }
+   else { cordova.exec(function(){},function(){},"CustomAPI","debugClose",[url]); }
+ }
+function debug_reset()
+ { window.localStorage.clear();
+   _cv_get_filesystem(function(fileSystem)
+ 	  { fileSystem.root.getDirectory(_cv_lib_val.sharedfolder,{create:false,exclusive:false},function(fileEntry)
+       { fileEntry.removeRecursively(function(){ debug_close(); },_cv_fail); },_cv_fail);
+ 	  });
+ }
+
+function read_config()
+ { cordova.exec(function(rtn)
+    { _cv_config=rtn;
+      _cv_lib_val.app_url=rtn.app_url;
+      if (_cv_lib_val.app_url[_cv_lib_val.app_url.length-1]!='/') { _cv_lib_val.app_url+='/'; }
+      $('#app_url').val(_cv_lib_val.app_url).change(function() { change_parameter('app_url',$('#app_url').val()); });
+      _cv_lib_val.app_includes=rtn.app_includes;
+      $('#app_includes').val(_cv_lib_val.app_includes).change(function()
+       { change_parameter('app_includes',$('#app_includes').val()); });
+    },function(){ error('unable to read config file'); },"CustomAPI","readSettingsFile",[]);
+ }
+
+function error(txt)
+ { $('body').append('<div class="error">'+txt+'</div>'); }
+
+function change_parameter(field_id,value)
+ { cordova.exec(function(rtn) {},function(){ error('unable to change config file'); },"CustomAPI","changeSettingsParameter",[field_id,value]); }
+
+function load_page(page)
+ { $('#page_'+_cv_lib_val.page).hide(); $('#page_'+page).show();
+   $('#menu_'+_cv_lib_val.page).removeClass('db_btn_sel'); $('#menu_'+page).addClass('db_btn_sel');
+   _cv_lib_val.page=page;
+   if (page==2) { load_info(); } if (page==3) { load_files(''); } if (page==4) { load_beacons(''); }
+ }
+
+function load_beacons()
+ { _cv_lib_val.beacons={}; _cv_lib_val.beacons_ts={};
+   if (!_cv_lib_val.scan_active)
+    { _cv_lib_val.scan_active=true;
+      $(document).on("_cv_beacon_changed",function(rtn) { update_beacons(rtn); });
+    }
+   var str='';
+   str+='<div><label>UUID</label><input id="beacon_uuid" onchange="save_beacon_id();"> <span onclick="$(\'#beacon_uuid\').val(\'42122F41-17DE-46A6-A4C7-A392BD8D1F49\'); save_beacon_id();">reset</span></div>';
+   str+='<div><label>Beacon</label>Major <input id="beacon_major" type="number" style="width:150px;" onchange="save_beacon_id();"> Minor <input id="beacon_minor" type="number" style="width:150px;" onchange="save_beacon_id();"></div>';
+   _cv_get_json('beacon',function(rtn)
+    { if (!_cv_lib_val.beacon.uuid_major)
+       { _cv_lib_val.beacon.uuid='42122F41-17DE-46A6-A4C7-A392BD8D1F49';
+         _cv_lib_val.beacon.uuid_major=99; _cv_lib_val.beacon.uuid_minor=Math.round(Math.random()*65535);
+         _cv_save_json('beacon');
+       }
+      $('#beacon_uuid').val(_cv_lib_val.beacon.uuid);
+      $('#beacon_major').val(_cv_lib_val.beacon.uuid_major); $('#beacon_minor').val(_cv_lib_val.beacon.uuid_minor);
+    });
+   str+='<div><span class="btn" onclick="start_beacon_scan();">START SCAN</span> <span class="btn" onclick="stop_beacon_scan();">STOP SCAN</span> <span class="btn" onclick="start_beacon_transmit();">START TRANSMIT</span> <span class="btn" onclick="stop_beacon_transmit();">STOP TRANSMIT</span></div>';
+   str+='<div id="beacon_info"></div>';
+   $('#page_4').html(str);
+ }
+
+function save_beacon_id()
+ { _cv_lib_val.beacon.uuid=$('#beacon_uuid').val(); _cv_lib_val.beacon.uuid_major=$('#beacon_major').val();
+   _cv_lib_val.beacon.uuid_minor=$('#beacon_minor').val(); _cv_save_json('beacon');
+ }
+function start_beacon_transmit()
+ { $('#beacon_info').html('starting transmit');
+   _cv_start_beacon_transmit({'UUID':_cv_lib_val.beacon.uuid,'major':_cv_lib_val.beacon.uuid_major,'minor':_cv_lib_val.beacon.uuid_minor}); }
+function stop_beacon_transmit() { _cv_stop_beacon_transmit(); $('#beacon_info').html('stoping transmit'); }
+
+function start_beacon_scan()
+ { _cv_start_beacon_scan({'UUID':_cv_lib_val.beacon.uuid}); $('#beacon_info').html('starting scan'); }
+function stop_beacon_scan()
+ { _cv_stop_beacon_scan({'UUID':_cv_lib_val.beacon.uuid}); $('#beacon_info').html('stoping scan'); }
+
+function update_beacons(rtn)
+ { var ts=Date.now();
+   if (rtn.beacons)
+    { $.each(rtn.beacons,function(k,v)
+       { if (v.distance) //update array of beacons, compensate errors in distance
+          { _cv_lib_val.beacons_ts[v.id]=ts;
+            if (_cv_lib_val.beacons[v.id]) { _cv_lib_val.beacons[v.id]-=(_cv_lib_val.beacons[v.id]-v.distance)/3; }
+            else { _cv_lib_val.beacons[v.id]=v.distance; }
+          }
+       });
+    }
+   for (beacon in _cv_lib_val.beacons) //remove beacons that don't get update after 5sec
+    { var tsb=_cv_lib_val.beacons_ts[beacon];
+      if ((ts-tsb)>5000) { delete _cv_lib_val.beacons[beacon]; }
+    } _cv_lib_val.beacons=_cv_sort_assoc(_cv_lib_val.beacons);
+
+   var str='<table>'; $.each(_cv_lib_val.beacons,function(k,v)
+    { str+='<tr><td>'+k+'</td><td>'+(Math.round(v*100)/100)+'</td></tr>';
+    }); str+='</table>'; $('#beacon_info').html(str);
+ }
+
+function load_info()
+ { $('#page_2').html('');
+   _cv_get_network_info(function(rtn)
+    { if (rtn.SSID) { add_info('<label>SSID</label> '+rtn.SSID); } if (rtn.IP) { add_info('<label>IP</label> '+rtn.IP); } });
+   _cv_get_device_info(function(rtn){ add_info('<label>Device</label> '+rtn.model+' '+rtn.platform+' '+rtn.version); });
+   _cv_get_device_data(function(rtn)
+    { add_info('<label>Battery</label> '+rtn.batterylevel*100+'%'); add_info('<label>Sleep</label> '+rtn.sleep);
+      add_info('<label>Brightness</label> '+rtn.brightness*100+'%'); add_info('<label>Volume</label> '+rtn.volume*100+'%');
+    });
+   _cv_get_app_info(function(rtn) { add_info('<label>AppVersion</label> '+rtn.AppVersion); });
+ }
+
+function add_info(txt) { $('#page_2').append('<div>'+txt+'</div>'); }
+
+function load_files(path)
+ { var str='';
+   if (path.length)
+    { str+='<div class="fb_breadcrumb"><span onclick="load_files(\'\')";>..</span>'; var dirs=path.split('/'); var dirstr='';
+      $.each(dirs,function(key,value)
+       { if (value.length)
+          { dirstr+='/'+value; str+='/<span onclick="load_files(\''+dirstr+'\')";>'+value+'</span>'; }
+       }); str+='</div>';
+    }
+   $('#page_3_content').html(str); $('#page_3_preview').html('<div id="folder_stat"></div>');
+   _cv_lib_val.folder_stat_size=0;
+   _cv_get_filelist_from_device(path,false)
+    .then(function(rtn)
+     { for (i=0;i<rtn.folders.length;i++) { add_folder(rtn.folders[i],path); }
+       for (i=0;i<rtn.files.length;i++) { add_file(rtn.files[i],path); }
+       $('#folder_stat').html('<table style="margin-top:20px;"><tr><td class="fb_size">Folder</td><td>'+rtn.folders.length+'</td></tr><tr><td class="fb_size">Files</td><td>'+rtn.files.length+'</td></tr><tr><td class="fb_size">Size</td><td id="folder_size"></td></tr></table>');
+     });
+ }
+
+function add_file(file,path)
+ { txt=file; if (path.length) { txt=file.substring(path.length+1); } var id=Math.floor(Math.random()*99999);
+   var ft=get_file_type(txt);
+   var oc='open_file(\'../../'+file+'\');';
+   if (ft) { oc='show_file(\''+file+'\',\''+path+'\',\''+ft+'\');'; }
+   $('#page_3_content').append('<div class="fb_file" onclick="'+oc+'">'+txt+'<span class="fb_size" id="size_'+id+'"></span><span class="fb_date" id="date_'+id+'"></span></div>');
+   get_file_info(file,id);
+ }
+
+function add_folder(folder,path)
+ { txt=folder; if (path.length) { txt=folder.substring(path.length+1); }
+   $('#page_3_content').append('<div class="fb_folder" onclick="load_files(\''+folder+'\');">&#128194; '+txt+'</div>');
+ }
+
+function show_file(file,path,ft)
+ { var txt=file; if (path.length) { txt=file.substring(path.length+1); }
+   var ext=txt.split('.').pop().toLowerCase();
+   if (ft=='text')
+    { $('#page_3_preview').html('<textarea id="content_preview_text"></textarea>');
+      $.get('../../'+file,function(data){ $('#content_preview_text').val(data); });
+    }
+   else if (ft=='image') { $('#page_3_preview').html('<img src="../../'+file+'">'); }
+ }
+
+function open_file(nb) { _cv_open_file(nb,{'onLoadErrorClose':false}); }
+
+function get_file_type(file)
+ { var ext=txt.split('.').pop().toLowerCase(); var rt=false;
+   switch (ext)
+    { case'xml': case'txt': case'json': case'js': case'html': case'htm': case'csv': { rt='text'; break; }
+      case'jpg': case'jpeg': case'png': case'gif': { rt='image'; break; }
+    } return(rt);
+  }
+
+function get_file_info(file,id)
+ { _cv_get_filesystem(function(fileSystem)
+    { fileSystem.root.getFile(file,{create:false,exclusive:false},
+      function(fileEntry)
+       { fileEntry.file(function(fileObj)
+          { $('#date_'+id).html(_cv_format_filesize(fileObj.size)); $('#size_'+id).html(ft_date(fileObj.lastModifiedDate));
+            _cv_lib_val.folder_stat_size+=fileObj.size; $('#folder_size').html(_cv_format_filesize(_cv_lib_val.folder_stat_size));
+          });
+       },function(fileEntry) { console.log('error file info: '+file); });
+    });
+ }
+
+function ft_date(time)
+ { var d=new Date(time);
+   var year=d.getFullYear().toString().substr(2,2); var month=d.getMonth()<10?"0"+d.getMonth():d.getMonth();
+   var day=d.getDate()<10?"0"+d.getDate():d.getDate(); var hours=d.getHours()<10?"0"+d.getHours():d.getHours();
+   var minutes=d.getMinutes()<10?"0"+d.getMinutes():d.getMinutes(); var seconds=d.getSeconds()<10?"0"+d.getSeconds():d.getSeconds();
+   return(year+'.'+month+'.'+day+' '+hours+":"+minutes+":"+seconds);
+ }
+
+function app_debug()
+ { var val=$('#app_debug').prop('checked'); _cv_set_debug_switch(val); }
+function app_reset()
+ { debug_close(); _cv_reset_app(); _cv_set_reset_switch(true); }
+
+</script>
+</head>
+<style>
+body,html
+ { margin:0; padding:0; background-color:#24262a; color:#FFFFFF;
+   font-family:Menlo-Regular,Verdana;
+   -webkit-font-smoothing:antialiased !important; -moz-osx-font-smoothing:grayscale !important;
+   -webkit-tap-highlight-color:rgba(0,0,0,0); -webkit-touch-callout:none; -webkit-user-select:none;
+ }
+body { padding:20px; }
+.btn
+ { text-decoration:none; color:#000000; background-color:#FFFFFF;
+   padding:10px; padding-top:6px; padding-bottom:6px; border-radius:3px; margin:4px;
+   display:inline-block;
+ }
+body,html,h1,h2,h3,h4,b,i,div,span,th,td,label,input,select,option,button
+ { font-family:Menlo-Regular,Verdana; font-size:15px; font-weight:normal !important; }
+label { color:#9fa3b2; width:200px; display:inline-block; text-align:right; margin-right:10px; }
+input, textarea, select
+ { width:400px; border-radius:3px; color:#FFFFFF; background-color:#1e2023; padding:10px;
+   border:1px solid #24262a !important;
+ }
+textarea:focus, input:focus, select:focus { outline:none !important; box-shadow:none !important; }
+
+#db_menu
+ { position:fixed; top:0; left:0; right:0; background-color:#2e333b; z-index:10;
+   height:35px; overflow:hidden; padding-left:50px;
+ }
+.db_btn
+ { color:#9fa3b2; text-decoration:none;
+   padding:8px; padding-top:10px; font-size:12px; height:35px; display:inline-block;
+ }
+.db_btn_sel { background-color:#4789cf; color:#FFFFFF; }
+.db_btn_right { float:right; }
+#db_cog { position:fixed; top:-9px; left:12px; font-size:40px !important; opacity:.125 !important; }
+
+.btn
+ { background-color:#24262a; color:#FFFFFF; border:2px solid #6d7c8f; border-radius:3px; padding-top:5px; padding-bottom:3px; }
+.btn_small
+ { background-color:#6d7c8f; color:#24262a; border-radius:3px; font-size:10px; padding:3px; }
+
+.content, #page_3_content, #page_3_preview, #page_3_preview textarea
+ { position:fixed; top:35px; bottom:0; left:0; right:0; padding:20px; overflow-y:scroll; }
+#page_3_preview { padding:0; }
+#page_3_preview img { max-width:100%; max-height:100%; }
+
+.fb_breadcrumb { margin-bottom:5px; }
+.fb_file, .fb_folder,.fb_breadcrumb span
+ { padding-top:3px; padding-bottom:1px; padding-left:6px; padding-right:6px;
+   margin-top:3px; margin-bottom:3px; background-color:#323640; border-radius:3px;
+ }
+.fb_date, .fb_size { margin-left:5px; font-size:8px; float:right; }
+.fb_date { color:#666666; }
+
+#page_3_content { right:50%; }
+#page_3_preview, #page_3_preview textarea { left:50%; }
+#page_3_preview textarea { font-family:Andale Mono,Verdana !important; font-size:9px; }
+
+.beacon_dist { display:inline-block; width:50px; font-size:9px; text-align:right; margin-right:10px; }
+#beacon_info { margin-top:20px; }
+
+.setting { clear:both; margin-bottom:10px; }
+.setting_default { float:right; }
+
+.big-checkbox { display:none !important; }
+.big-checkbox+label
+ { background-color:#24262a; border:2px solid #2e333b; border-radius:10px;
+   font-family:Verdana; font-size:20px; width:30px; height:30px; text-align:center; overflow:hidden;
+   display:inline-block; position:relative; cursor:pointer; padding:0;
+ }
+.big-checkbox+label:after { content:'×'; color:#2e333b; }
+.big-checkbox:checked+label:after { content:'✓'; color:#FFFFFF; }
+</style>
+<body>
+<div id="db_menu"><span id="db_cog">&#9881;</span><span class="db_btn db_btn_sel" id="menu_1" onclick="load_page(1);" ontouchstart="load_page(1); return(false);">PROJECT</span><span class="db_btn" id="menu_2" onclick="load_page(2);" ontouchstart="load_page(2); return(false);">INFO</span><span class="db_btn" id="menu_3" onclick="load_page(3);" ontouchstart="load_page(3); return(false);">FILES</span><span class="db_btn" id="menu_4" onclick="load_page(4);" ontouchstart="load_page(4); return(false);">BEACON</span><span class="db_btn db_btn_right" onclick="debug_close();" ontouchstart="debug_close();">CLOSE</span><span class="db_btn db_btn_right" onclick="debug_logout();" ontouchstart="debug_logout(); return(false);">LOGOUT</span></div>
+
+<div id="page_1" class="content">
+<div class="setting"><label>base URL</label><input autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" id="app_url">
+<div class='setting_default'>
+<span class='btn_small' onclick='$("#app_url").val("http://172.20.28.92:8888/eventapp_android/").change();'>172.20.28.92</span>
+<span class='btn_small' onclick='$("#app_url").val("https://dev.cmdapp.com/").change();'>dev.cmdapp.com</span>
+<span class='btn_small' onclick='$("#app_url").val("https://uk.chime.live/").change();'>uk.chime.live</span>
+</div>
+</div>
+<div class="setting"><label>config file</label><input autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" id="app_includes">
+<div class='setting_default'>
+<span class='btn_small' onclick='$("#app_includes").val("app_includes.xml").change();'>app_includes.xml</span>
+</div>
+</div>
+<!--<br/><br/>
+<span class='btn' onclick='debug_close();'>CLOSE</span>
+<span class='btn' onclick='debug_reset();'>RESET</span>-->
+<br/><br/>
+<div class='setting'><label>reset switch</label><input onclick='app_reset();' id='app_reset' name='app_reset' type='checkbox' class='big-checkbox'><label for='app_reset'></label></div>
+<div class='setting'><label>debug switch</label><input onclick='app_debug();' id='app_debug' name='app_debug' type='checkbox' class='big-checkbox'><label for='app_debug'></label></div><br/>
+<div><span class="btn" onclick="debug_logout();">LOGOUT</span> <span class="btn" onclick="debug_close();">CLOSE</span></div>
+</div>
+
+<div id="page_2" class="content" style="display:none;"></div>
+<div id="page_3" style="display:none;"><div id="page_3_content"></div><div id="page_3_preview"></div></div>
+<div id="page_4" class="content" style="display:none;"></div>
+
+</body>
+</html>

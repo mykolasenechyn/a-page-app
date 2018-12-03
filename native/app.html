@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<title>PSAV Page</title>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="format-detection" content="telephone=no" />
+<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, width=device-width">
+<script type="text/javascript" src="jquery-3.3.1.min.js"></script>
+<script type="text/javascript" src="fastclick.js"></script>
+<link rel="stylesheet" type="text/css" href="css/fontawesome-all.min.css" />
+
+<style>
+body,html
+ { width:100%; height:100%; margin:0; padding:0; font-family:RB_boldcond,Verdana; font-size:16px;
+   background-color:#999999; color:#000000;
+   -webkit-font-smoothing:antialiased !important; -moz-osx-font-smoothing:grayscale !important;
+   -webkit-tap-highlight-color:rgba(0,0,0,0); -webkit-touch-callout:none; -webkit-user-select:none;
+   -webkit-backface-visibility:hidden; -webkit-perspective:1000; perspective:1000; backface-visibility:hidden;
+   -webkit-transform:translateZ(0); -ms-transform:translateZ(0); transform:translateZ(0);
+ }
+@font-face
+ { font-family:'RB_cond'; src:url('fonts/Roboto-Condensed.ttf') format('truetype'); font-weight:normal; font-style:normal; }
+@font-face
+ { font-family:'RB_boldcond'; src:url('fonts/Roboto-Condensed-Bold.ttf') format('truetype'); font-weight:normal; font-style:normal; }
+
+.btn
+ { text-decoration:none; color:#FFFFFF; background-color:#333333; display:inline-block;
+   padding:10px; padding-top:6px; padding-bottom:6px; border-radius:3px; margin:4px;
+ }
+.btn_issue
+ { background-color:#CCCCCC; border-radius:10px; height:120px; width:120px; display:inline-block; margin:5px; }
+.btn_issue .img_issue td { height:90px; width:120px; text-align:center; }
+.btn_issue .img_issue img { max-width:70px; max-height:70px; }
+.btn_issue .btn_label { height:30px; text-align:center; }
+#result { width:100%; }
+.event_image { text-align:center; }
+.header_text { text-align:center; }
+
+#dark { position:absolute; top:0; bottom:0; left:0; right:0; background:rgba(0,0,0,.7); display:none; }
+#window { position:absolute; top:0; bottom:0; left:0; right:0; display:none; text-align:center; }
+.window_body { background-color:#CCCCCC; padding:10px; width:300px; text-align:left; display:inline-block; border-radius:6px; position:relative; }
+.window_body img { max-width:70px; max-height:70px; }
+</style>
+
+<script type="text/javascript">
+document.write('<script type="text/javascript" src="../_cv_js/cordova.js"></'+'script>');
+document.write('<script type="text/javascript" src="_cv_lib.js?'+Math.random()+'"></'+'script>');
+
+document.addEventListener("deviceready",onDeviceReady,false);
+document.addEventListener('DOMContentLoaded',DOMContentLoaded,false);
+function onDeviceReady() { _cv_lib_val.onDeviceReady=true; loading(); }
+function DOMContentLoaded() { _cv_lib_val.DOMContentLoaded=true; loading(); }
+
+var _cv_server_url=false;
+
+var par=[];
+//par.url_server='http://www.button.red/';
+par.url_server='http://page.chime.events/';
+par.notification_interval=5000;
+
+par.url_api='DSService/api/';
+par.url_image_event='PSAVDSWeb/Upload/Event/';
+par.url_image_issue='PSAVDSWeb/Upload/Issue/';
+
+par.api=[];
+par.api.getversion='DS/CheckLatestVersion/';
+par.api.login='Login/Login/';
+par.api.getroomdetails='DS/GetRoomDeatailsByRoomID/';
+par.api.getnotification='DS/GetNotifications/';
+par.api.resetnotification='DS/SetNotfications/';
+par.api.sendissue='DS/SaveIssueRequest/';
+par.api.getevents='DS/GetEventsByCenter/';
+par.api.getissues='DS/GetIssuessByRoomEvent/';
+
+
+par.cfg=[];
+   
+function loading()
+ { if (typeof(_cv_skip_cordova)=='undefined') //wait for dom & cordova ready
+    { if (_cv_lib_val.DOMContentLoaded && _cv_lib_val.onDeviceReady) { loading_device(); } }
+   else { loading_generic(); }
+ }
+
+function loading_generic()
+ { api_login();
+ }
+
+function loading_device()
+ { _cv_get_json('page_par',function()
+    { console.log(_cv_lib_val.page_par.user);
+      if (!_cv_lib_val.page_par.user)
+       { par.cfg.user="user_18_1"; par.cfg.password="password"; 
+         show_login();
+       }
+      else
+       { par.cfg.user=_cv_lib_val.page_par.user; par.cfg.password=_cv_lib_val.page_par.password;
+         api_login(_cv_lib_val.page_par.user,_cv_lib_val.page_par.password);
+       }
+    });
+
+
+   _cv_disable_sleep();
+   //_cv_set_brightness(1);
+   _cv_get_reset_switch(function(rtn) { _cv_set_reset_switch(false); });
+   document.addEventListener("backbutton",function(e) { e.preventDefault(); },false);
+ }
+
+function show_login(error)
+ { var txt='<span class="window_body">';
+   txt+='<div>Please Login</div>';
+   txt+='<div>user <input id="login_user" value="'+par.cfg.user+'"/></div>';
+   txt+='<div>password <input id="login_pass" value="'+par.cfg.password+'"/></div>';
+   if (error) { txt+='<div id="login_msg">unable to login</div>'; }
+   txt+='<div><span class="btn" onclick="submit_login();">LOGIN</span></div>';
+   txt+='</span>';
+   open_window(txt);
+ }
+
+function submit_login()
+ { par.cfg.user=$('#login_user').val();
+   par.cfg.password=$('#login_pass').val();
+   $('#login_msg').html('');
+   api_login();
+ }
+
+function api_login()
+ { $.ajax(
+    { url:par.url_server+par.url_api+par.api.login,type:"POST",dataType:"json",
+      data:{"EmailAddress":par.cfg.user,"Password":par.cfg.password},
+      success:function (data)
+       { par.cfg.EmployeeIdNumber=data.EmployeeIdNumber;
+         par.cfg.RoomID=data.RoomID;
+         api_getroomdetails();
+         _cv_lib_val.page_par.user=par.cfg.user;
+         _cv_lib_val.page_par.password=par.cfg.password;
+         _cv_save_json('page_par');
+         close_window();
+       },
+      error:function (data) { show_login(true) }
+    });
+ }
+
+function api_getroomdetails()
+ { $.ajax(
+    { url:par.url_server+par.url_api+par.api.getroomdetails,type:"POST",dataType:"json",
+      data:{"RoomID":par.cfg.RoomID},
+      success:function (data)
+       { par.cfg.CenterID=data[0].CenterID;
+         par.cfg.EventImage=data[0].EventImage;
+         par.cfg.EventID=data[0].EventID;
+         par.cfg.RoomName=data[0].RoomName;
+         $('#result').append('<div class="header_text">'+par.cfg.RoomName+'</div>');
+         $('#result').append('<div class="event_image"><img src="'+par.url_server+par.url_image_event+par.cfg.EventImage+'"></div>');
+         $('#result').append('<div class="header_text">In-Room assistance needed?</br>Select from the options below.</div>');
+         api_getissues();
+       },
+      error:post_error
+    });
+ }
+
+function api_getevents()
+ { $.ajax(
+    { url:par.url_server+par.url_api+par.api.getevents,type:"POST",dataType:"json",
+      data:{"CenterID":1},
+      success:function (data) { $('#result').append('<br/><br/>api_getevents<div>'+JSON.stringify(data,null,2)+'</div>'); },
+      error:post_error
+    });
+ }
+
+function api_getissues()
+ { $.ajax(
+    { url:par.url_server+par.url_api+par.api.getissues,type:"POST",dataType:"json",
+      data:{"RoomID":par.cfg.RoomID,"EventID":par.cfg.EventID},
+      success:function (data)
+       { par.cfg.Issues=[]; var cnt=0;
+         for (var issue in data)
+          { var val=[];
+            val.IssueID=data[issue].IssueID;
+            val.IssueImage=data[issue].IssueImage;
+            val.IssueType=data[issue].IssueType;
+            val.SpecifyIssue=data[issue].SpecifyIssue;
+            par.cfg.Issues.push(val);
+            var txt='<table class="btn_issue" onclick="click_issue('+cnt+');">'
+              +'<tr class="img_issue"><td><img src="'+par.url_server+par.url_image_issue+val.IssueImage+'"></td></tr>'
+              +'<tr><td class="btn_label">'+val.IssueType+'</td></tr>'
+              +'</table>'
+            $('#result').append(txt); cnt++;
+          }
+         getnotification_interval();
+       },
+      error:post_error
+    });
+ }
+
+function getnotification_interval()
+ { if (par.not_intv) { window.clearInterval(par.not_intv); par.not_intv=false; }
+   par.not_intv=setInterval(function()
+    {
+      api_getnotification();
+    },par.notification_interval); api_getnotification();
+ }
+
+function api_getnotification()
+ { var xhr=new XMLHttpRequest();
+   xhr.open("POST",par.url_server+par.url_api+par.api.getnotification,true);
+   xhr.setRequestHeader('Content-Type','application/json');
+   xhr.overrideMimeType("text/plain");
+   xhr.onreadystatechange=function()
+    { if (xhr.readyState==4)
+        { if (xhr.status==200)
+           { if (!par.open_window)
+              { var notifications=JSON.parse(xhr.response);
+                var txt='<span class="window_body">'; var notarr=[];
+                for (var c in notifications)
+                 { var val=notifications[c];
+                   txt+='<div id="issue_id_'+val.NotificationID+'"><div>'+val.Description+'</div>';
+                   txt+='<div>'+val.Details+'</div>';
+                   txt+='</div><br/>';
+                   notarr.push(val.NotificationID);
+                 }
+                txt+='<div><span class="btn" onclick="confirm_notifications('+JSON.stringify(notarr)+');">CONFIRM</span></div>';
+                txt+='</span>';
+                open_window(txt);
+              }
+           }
+        }
+    };
+   xhr.send(JSON.stringify({"RoomID":par.cfg.RoomID}));
+ }
+
+function confirm_notifications(notifications)
+ { for (var id in notifications) { api_setNotfication(notifications[id]); }
+   close_window();
+ }
+
+function api_setNotfication(id)
+ { var xhr=new XMLHttpRequest();
+   xhr.open("POST",par.url_server+par.url_api+par.api.resetnotification,true);
+   xhr.setRequestHeader('Content-Type','application/json');
+   xhr.onreadystatechange=function()
+    { if (xhr.readyState==4) { if (xhr.status==200) { } } };
+   xhr.send(JSON.stringify({"NotificationID":id}));
+ }
+
+function click_issue(id)
+ { val=par.cfg.Issues[id];
+   var txt='<span class="window_body">'
+    +'<div><img src="'+par.url_server+par.url_image_issue+val.IssueImage+'"></div>'
+    +'<div>'+val.IssueType+'</div>';
+
+   if (val.SpecifyIssue)
+    { txt+='<div>Specify Issue</div>';
+      txt+='<div><textarea id="issue_text"></textarea></div>';
+      txt+='<div><span class="btn" onclick="send_issue('+id+',$(\'#issue_text\').val());">SUBMIT</span></div>';
+      txt+='<div><span class="btn" onclick="send_issue('+id+');">JUST SEND HELP</span></div>';
+    }
+   else
+    { txt+='<div>Confirm Request</div>';
+      txt+='<div><span class="btn" onclick="send_issue('+id+');">YES</span></div>';
+    }
+
+   txt+='<div><span class="btn" onclick="close_window();">CLOSE</span></div>';
+   txt+='</span>';
+   open_window(txt);
+ }
+
+function send_issue(id,txt)
+ { val=par.cfg.Issues[id]; if (!txt) { txt=""; }
+   var xhr=new XMLHttpRequest();
+   xhr.open("POST",par.url_server+par.url_api+par.api.sendissue,true);
+   xhr.setRequestHeader('Content-Type','application/json');
+   xhr.onreadystatechange=function()
+    { if (xhr.readyState==4)
+        { if (xhr.status==200) { open_window_message('request transmitted'); }
+          else { open_window_error('unable to send request'); }
+        }
+    };
+   xhr.send(JSON.stringify({"RoomID":par.cfg.RoomID,"EventID":par.cfg.EventID,"IssueID":val.IssueID,"Description":txt}));
+   close_window();
+ }
+
+function open_window_message(msg)
+ { var txt='<span class="window_body">';
+   txt+='<div>'+msg+'</div>';
+   txt+='<div><span class="btn" onclick="close_window();">CLOSE</span></div>';
+   txt+='</span>';
+   open_window(txt);
+ }
+
+function open_window_error(msg)
+ { var txt='<span class="window_body">';
+   txt+='<div style="color:red;">'+msg+'</div>';
+   txt+='<div><span class="btn" onclick="close_window();">CLOSE</span></div>';
+   txt+='</span>';
+   open_window(txt);
+ }
+
+function open_window(txt)
+ { $('#dark').show(); $('#window').html(txt).show(); par.open_window=true;
+   //var tp=(window.innerHeight-$('#window .window_body').outerHeight())/2;
+   var tp=50;
+   $('#window .window_body').css('top',tp);
+ }
+
+function close_window()
+ { $('#dark').hide(); $('#window').hide(); par.open_window=false;
+ }
+
+function post_error(jqXHR,textStatus,errorThrown) { console.log(textStatus); }
+</script>
+</head>
+<body>
+<div><span class="btn" onclick="_cv_reset_app();">RESET 2</span> <span class="btn" onclick="_cv_restart_app();">RESTART</span></div>
+<div id="result"></div>
+<div id="dark"></div>
+<div id="window"><span class="window_body"><span class="btn" onclick="close_window();">CLOSE</span></span></div>
+</body>
+</html>

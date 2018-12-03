@@ -1,0 +1,1 @@
+_cv_skip_cordova=true;
