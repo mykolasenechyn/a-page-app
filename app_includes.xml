@@ -1,9 +1,10 @@
 <app_includes>
   <launch>native/app.html</launch>
   <settings>native/app_settings.html</settings>
-  <file>native/jquery-3.3.1.min.js</file>
-  <file>native/_cv_lib.js</file>
-  <file>native/fastclick.js</file>
+  <file>native/js/jquery-3.3.1.min.js</file>
+  <file>native/js/_cv_lib.js</file>
+  <file>native/js/fastclick.js</file>
+  <file>native/js/app.js</file>
   <file>native/app.html</file>
   <file>native/app_settings.html</file>
   <file>native/fonts/fa-brands-400.ttf</file>
@@ -11,6 +12,9 @@
   <file>native/fonts/fa-solid-900.ttf</file>
   <file>native/fonts/Roboto-Condensed-Light.ttf</file>
   <file>native/fonts/Roboto-Condensed-Bold.ttf</file>
+  <file>native/fonts/Arial.ttf</file>
+  <file>native/fonts/Arial-Bold.ttf</file>
   <file>native/fonts/Roboto-Condensed.ttf</file>
   <file>native/css/fontawesome-all.min.css</file>
+  <file>native/css/styles.css</file>
 </app_includes>
